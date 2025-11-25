@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>對幣機計算器 - 簡潔版</title>
+    <style>
+        /* --- 基礎設定 --- */
+        body {
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #050505;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: #fff;
+            user-select: none;
+            overflow-y: auto;
+        }
+
+        /* --- 背景動畫 --- */
+        .grid-bg {
+            position: fixed;
+            top: 0; left: 0;
+            width: 200%;
+            height: 200%;
+            background-image: 
+                linear-gradient(rgba(0, 255, 255, 0.05) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 255, 255, 0.05) 1px, transparent 1px);
+            background-size: 40px 40px;
+            transform: perspective(500px) rotateX(60deg) translateY(-100px) translateZ(-200px);
+            animation: moveGrid 20s linear infinite;
+            z-index: -1;
+            pointer-events: none;
+        }
+        @keyframes moveGrid {
+            0% { transform: perspective(500px) rotateX(60deg) translateY(0) translateZ(-200px); }
+            100% { transform: perspective(500px) rotateX(60deg) translateY(40px) translateZ(-200px); }
+        }
+
+        /* --- 計算機主體 --- */
+        .calculator-body {
+            background: rgba(18, 18, 24, 0.95);
+            padding: 20px;
+            border-radius: 24px;
+            box-shadow: 0 0 40px rgba(0, 255, 242, 0.15), inset 0 0 20px rgba(0, 0, 0, 0.8);
+            border: 1px solid rgba(0, 255, 242, 0.3);
+            backdrop-filter: blur(10px);
+            width: 350px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            position: relative;
+            margin: 20px 0;
+        }
+
+        /* 裝飾螺絲 */
+        .bolt {
+            position: absolute;
+            width: 8px; height: 8px; background: #333; border-radius: 50%;
+            box-shadow: inset 1px 1px 2px #000, 0 1px 0 rgba(255,255,255,0.2);
+        }
+        .b-tl { top: 12px; left: 12px; } .b-tr { top: 12px; right: 12px; }
+        .b-bl { bottom: 12px; left: 12px; } .b-br { bottom: 12px; right: 12px; }
+
+        h2 {
+            margin: 5px 0; color: #00fff2; text-align: center;
+            font-size: 0.9rem; letter-spacing: 2px; text-transform: uppercase;
+            text-shadow: 0 0 5px rgba(0, 255, 242, 0.5);
+        }
+
+        /* --- 螢幕區 --- */
+        .screen-container {
+            background: #080808; border: 2px solid #333; border-radius: 10px;
+            padding: 10px 15px; display: flex; flex-direction: column;
+            justify-content: center; min-height: 90px;
+            box-shadow: inset 0 0 15px rgba(0,0,0,0.9); margin-bottom: 5px;
+        }
+        .input-row { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; padding-bottom: 5px; margin-bottom: 5px; }
+        .input-label { font-size: 0.7rem; color: #666; }
+        .input-val { font-family: 'Courier New', monospace; font-size: 1.4rem; color: #aaa; }
+        .result-row { text-align: right; }
+        .result-label { font-size: 0.6rem; color: #00fff2; display: block; text-align: left; margin-bottom: -5px;}
+        .result-val { font-family: 'Courier New', monospace; font-size: 2.8rem; font-weight: bold; color: #fff; text-shadow: 0 0 10px rgba(255, 255, 255, 0.2); }
+        .result-val.active { color: #00fff2; text-shadow: 0 0 20px rgba(0, 255, 242, 0.6); }
+
+        /* --- 快捷選單 --- */
+        .shortcut-wrapper {
+            background: rgba(0,0,0,0.4); border: 1px solid #444; border-radius: 10px;
+            padding: 8px; min-height: 90px; display: flex; align-items: center; justify-content: center;
+        }
+        .category-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 5px; width: 100%; }
+        .detail-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; width: 100%; animation: fadeIn 0.2s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
+        .sc-btn { padding: 8px 2px; font-size: 0.7rem; font-weight: bold; border-radius: 4px; border: 1px solid transparent; cursor: pointer; text-align: center; color: #fff; transition: all 0.1s; font-family: 'Segoe UI', sans-serif; white-space: nowrap; }
+        .btn-plus { background: rgba(0, 255, 100, 0.1); border-color: rgba(0, 255, 100, 0.2); color: #4dff88; }
+        .btn-plus:active { background: #4dff88; color: #000; }
+        .btn-minus { background: rgba(255, 50, 50, 0.1); border-color: rgba(255, 50, 50, 0.2); color: #ff5555; }
+        .btn-minus:active { background: #ff5555; color: #000; }
+        .btn-back { background: #333; border: 1px solid #555; color: #ddd; }
+
+        /* --- 鍵盤區 --- */
+        .keypad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 5px; }
+        .key {
+            background: linear-gradient(145deg, #2a2a35, #1c1c25); border: 1px solid #3d3d4d;
+            color: #fff; height: 50px; border-radius: 8px; font-size: 1.3rem;
+            cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            display: flex; justify-content: center; align-items: center;
+            transition: transform 0.1s;
+        }
+        .key:active { transform: translateY(2px); border-color: #00fff2; color: #00fff2; }
+        .backspace { color: #ffaa00; }
+        
+        .reset-btn { 
+            grid-column: span 3; 
+            background: rgba(255, 0, 60, 0.15); 
+            border: 1px solid rgba(255, 0, 60, 0.5); 
+            color: #ff3366; 
+            font-size: 1rem; 
+            letter-spacing: 3px; 
+            font-weight: bold; 
+            height: 45px; 
+            border-radius: 8px; 
+            cursor: pointer; 
+            text-transform: uppercase; 
+            margin-top: 5px; 
+            transition: all 0.2s; 
+        }
+        .reset-btn:hover { background: rgba(255, 0, 60, 0.3); color: #fff; }
+
+    </style>
+</head>
+<body>
+
+    <div class="grid-bg"></div>
+
+    <div class="calculator-body">
+        <div class="bolt b-tl"></div> <div class="bolt b-tr"></div> <div class="bolt b-bl"></div> <div class="bolt b-br"></div>
+
+        <h2>對幣機計算器 (簡潔版)</h2>
+
+        <!-- 螢幕區 -->
+        <div class="screen-container">
+            <div class="input-row">
+                <span class="input-label">INPUT</span>
+                <span id="inputDisplay" class="input-val">0</span>
+            </div>
+            <div class="result-row">
+                <span class="result-label">TOTAL (x5)</span>
+                <div id="resultDisplay" class="result-val">0</div>
+            </div>
+        </div>
+
+        <!-- 快捷選單區 -->
+        <div class="shortcut-wrapper" id="shortcutContainer"></div>
+
+        <!-- 鍵盤區 -->
+        <div class="keypad">
+            <button class="key" onclick="press('7')">7</button>
+            <button class="key" onclick="press('8')">8</button>
+            <button class="key" onclick="press('9')">9</button>
+            
+            <button class="key" onclick="press('4')">4</button>
+            <button class="key" onclick="press('5')">5</button>
+            <button class="key" onclick="press('6')">6</button>
+            
+            <button class="key" onclick="press('1')">1</button>
+            <button class="key" onclick="press('2')">2</button>
+            <button class="key" onclick="press('3')">3</button>
+            
+            <button class="key" onclick="press('0')">0</button>
+            <button class="key" onclick="press('00')">00</button>
+            <button class="key backspace" onclick="backspace()">⌫</button>
+
+            <button class="reset-btn" onclick="clearAll()">系統重置 RESET</button>
+        </div>
+    </div>
+
+    <script>
+        let currentInput = '';
+        const inputDisplay = document.getElementById('inputDisplay');
+        const resultDisplay = document.getElementById('resultDisplay');
+        const shortcutContainer = document.getElementById('shortcutContainer');
+        
+        // 初始化
+        renderMainCategories();
+
+        /* --- 快捷列表邏輯 --- */
+        function renderMainCategories() {
+            let html = `<div class="category-grid">`;
+            const ranges = [0, 10, 20, 30, 40, 50];
+            ranges.forEach(num => {
+                let label = num === 0 ? "+1..9" : `+${num}..`;
+                html += `<button class="sc-btn btn-plus" onclick="renderSubList(${num}, 1)">${label}</button>`;
+            });
+            ranges.forEach(num => {
+                let label = num === 0 ? "-1..9" : `-${num}..`;
+                html += `<button class="sc-btn btn-minus" onclick="renderSubList(${num}, -1)">${label}</button>`;
+            });
+            html += `</div>`;
+            shortcutContainer.innerHTML = html;
+        }
+
+        function renderSubList(baseNum, sign) {
+            let html = `<div class="detail-grid">`;
+            for (let i = 1; i <= 9; i++) {
+                let val = baseNum + i;
+                let finalVal = val * sign;
+                let displayStr = finalVal > 0 ? `+${finalVal}` : `${finalVal}`;
+                html += `<button class="sc-btn ${sign > 0 ? 'btn-plus' : 'btn-minus'}" onclick="applyShortcut(${finalVal})">${displayStr}</button>`;
+            }
+            html += `<button class="sc-btn btn-back" onclick="renderMainCategories()">返回 ↶</button>`;
+            html += `</div>`;
+            shortcutContainer.innerHTML = html;
+        }
+
+        function applyShortcut(amount) {
+            let val = parseInt(currentInput);
+            if (isNaN(val)) val = 0;
+            val += amount;
+            if (val < 0) val = 0;
+            currentInput = val.toString();
+            updateSystem();
+            renderMainCategories();
+        }
+
+        /* --- 計算機基本邏輯 --- */
+        function press(num) {
+            if (currentInput.length > 8) return;
+            if ((currentInput === '0' || currentInput === '') && num !== '.') {
+                currentInput = num;
+            } else {
+                currentInput += num;
+            }
+            updateSystem();
+        }
+
+        function backspace() {
+            currentInput = currentInput.slice(0, -1);
+            if (currentInput === '') currentInput = '';
+            updateSystem();
+        }
+
+        function clearAll() {
+            currentInput = '';
+            updateSystem();
+            renderMainCategories();
+        }
+
+        function updateSystem() {
+            if (currentInput === '' || currentInput === '0') {
+                inputDisplay.innerText = '0';
+                resultDisplay.innerText = '0';
+                resultDisplay.classList.remove('active');
+                if (currentInput === '') currentInput = '0'; 
+                return;
+            } else {
+                inputDisplay.innerText = currentInput;
+            }
+
+            const val = parseInt(currentInput);
+            if (!isNaN(val)) {
+                resultDisplay.innerText = val * 5;
+                resultDisplay.classList.add('active'); 
+            } else {
+                resultDisplay.innerText = 'ERR';
+                resultDisplay.classList.remove('active');
+            }
+        }
+
+        // 鍵盤監聽
+        document.addEventListener('keydown', (e) => {
+            if (e.key >= '0' && e.key <= '9') press(e.key);
+            if (e.key === 'Backspace') backspace();
+            if (e.key === 'Escape') clearAll();
+        });
+
+    </script>
+</body>
+</html>
+
